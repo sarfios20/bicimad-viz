@@ -1,0 +1,1045 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BiciMAD · Datos abiertos</title>
+<style>
+:root {
+  --surface-1: #fcfcfb;
+  --page: #f9f9f7;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --grid: #e1e0d9;
+  --baseline: #c3c2b7;
+  --border: rgba(11,11,11,0.10);
+  --series-1: #2a78d6;
+  --series-2: #1baf7a;
+  --seq-100: #cde2fb; --seq-200: #9ec5f4; --seq-300: #6da7ec; --seq-400: #3987e5;
+  --seq-500: #256abf; --seq-600: #184f95; --seq-700: #0d366b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface-1: #1a1a19;
+    --page: #0d0d0d;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --grid: #2c2c2a;
+    --baseline: #383835;
+    --border: rgba(255,255,255,0.10);
+    --series-1: #3987e5;
+    --series-2: #199e70;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 60px; }
+header h1 { font-size: 22px; font-weight: 650; margin: 0 0 4px; }
+header p { margin: 0; color: var(--text-secondary); }
+header .meta { color: var(--text-muted); font-size: 12px; margin-top: 6px; }
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin: 24px 0;
+}
+.tile {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.tile .label { color: var(--text-secondary); font-size: 12.5px; }
+.tile .value { font-size: 26px; font-weight: 600; margin-top: 2px; }
+.tile .sub { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
+
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 18px 12px;
+  min-width: 0;
+}
+.card.wide { grid-column: 1 / -1; }
+@media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+.card h2 { font-size: 14.5px; font-weight: 600; margin: 0; }
+.card .subtitle { color: var(--text-muted); font-size: 12px; margin: 2px 0 10px; }
+.card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+
+.tbl-btn {
+  font: inherit; font-size: 12px;
+  color: var(--text-secondary);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 10px;
+  cursor: pointer;
+  flex: none;
+}
+.tbl-btn:hover { color: var(--text-primary); }
+.tbl-btn[aria-pressed="true"] { color: var(--text-primary); border-color: var(--baseline); }
+
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+.legend .key { display: inline-flex; align-items: center; gap: 6px; }
+.key .swatch { width: 12px; height: 12px; border-radius: 3px; }
+.key .line { width: 16px; height: 2px; border-radius: 1px; }
+
+svg { display: block; }
+svg text { font-family: inherit; }
+.axis-label { fill: var(--text-muted); font-size: 11px; }
+.direct-label { fill: var(--text-secondary); font-size: 11px; font-weight: 600; }
+
+.data-table { display: none; max-height: 320px; overflow: auto; border-top: 1px solid var(--grid); margin-top: 8px; }
+.data-table.open { display: block; }
+.data-table table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.data-table th, .data-table td {
+  text-align: right; padding: 4px 8px;
+  border-bottom: 1px solid var(--grid);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+.data-table th:first-child, .data-table td:first-child { text-align: left; }
+.data-table th { color: var(--text-muted); font-weight: 600; position: sticky; top: 0; background: var(--surface-1); }
+
+#tooltip {
+  position: fixed;
+  pointer-events: none;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.14);
+  padding: 8px 12px;
+  font-size: 12.5px;
+  z-index: 10;
+  display: none;
+  max-width: 260px;
+}
+#tooltip .t-title { color: var(--text-muted); font-size: 11.5px; margin-bottom: 3px; }
+#tooltip .t-row { display: flex; align-items: center; gap: 7px; }
+#tooltip .t-row .k { width: 14px; height: 2px; border-radius: 1px; flex: none; }
+#tooltip .t-row .v { font-weight: 600; }
+#tooltip .t-row .n { color: var(--text-secondary); }
+
+.scale-legend { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--text-muted); margin-top: 6px; }
+.scale-legend .ramp { display: flex; height: 8px; border-radius: 4px; overflow: hidden; flex: none; }
+.scale-legend .ramp span { width: 22px; height: 8px; }
+
+.flow-controls { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 2px 0 10px; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.seg button {
+  font: inherit; font-size: 12.5px;
+  padding: 4px 12px;
+  background: none; border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.seg button[aria-pressed="true"] { background: var(--grid); color: var(--text-primary); font-weight: 600; }
+.play-btn {
+  font: inherit; font-size: 13px;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  flex: none;
+}
+.play-btn:hover { border-color: var(--baseline); }
+.hour-label { font-weight: 600; font-variant-numeric: tabular-nums; min-width: 92px; }
+input[type="range"].hour-slider {
+  flex: 1 1 200px;
+  min-width: 160px;
+  accent-color: var(--series-1);
+  height: 24px;
+}
+.map-label { fill: var(--text-muted); font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.8; }
+#card-flow svg circle { transition: fill 0.55s linear, r 0.55s ease; }
+
+footer { margin-top: 28px; color: var(--text-muted); font-size: 12px; }
+footer a { color: var(--text-secondary); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>BiciMAD en datos</h1>
+    <p>Datos abiertos del servicio público de bicicleta eléctrica de Madrid (EMT · datos.madrid.es)</p>
+    <p class="meta" id="meta"></p>
+  </header>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid">
+    <div class="card wide" id="card-map"></div>
+    <div class="card wide" id="card-flow"></div>
+    <div class="card wide" id="card-daily"></div>
+    <div class="card" id="card-monthly"></div>
+    <div class="card" id="card-weekday"></div>
+    <div class="card" id="card-heatmap"></div>
+    <div class="card" id="card-users"></div>
+  </div>
+
+  <footer>
+    Fuentes: <a href="https://datos.madrid.es">datos.madrid.es</a> ·
+    <a href="https://datos.emtmadrid.es">datos.emtmadrid.es</a> ·
+    feed GBFS de BiciMAD. Regenera con <code>./fetch_data.sh && python3 build.py</code>.
+  </footer>
+</div>
+
+<div id="tooltip" role="status"></div>
+
+<script src="data.js"></script>
+<script>
+'use strict';
+const D = window.BICIMAD;
+const fmt = new Intl.NumberFormat('es-ES');
+const fmtK = n => n >= 10000 ? (n / 1000).toLocaleString('es-ES', { maximumFractionDigits: 0 }) + ' mil' : fmt.format(n);
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const SEQ = ['--seq-100','--seq-200','--seq-300','--seq-400','--seq-500','--seq-600','--seq-700'];
+// En claro: más = más oscuro. En oscuro se invierte: lo bajo recede hacia la superficie
+// y lo alto destaca en claro, para que "brilla más" siga significando "más".
+const seqColors = () => {
+  const cs = SEQ.map(v => css(v));
+  return matchMedia('(prefers-color-scheme: dark)').matches ? cs.reverse() : cs;
+};
+const DIAS = ['lun','mar','mié','jue','vie','sáb','dom'];
+const isDark = () => matchMedia('(prefers-color-scheme: dark)').matches;
+
+// Proyección equirrectangular sobre el bbox de las estaciones, con margen
+function makeProjection(points, W, maxH, marginFrac = 0.04) {
+  const lats = points.map(p => p.lat), lons = points.map(p => p.lon);
+  let latMin = Math.min(...lats), latMax = Math.max(...lats);
+  let lonMin = Math.min(...lons), lonMax = Math.max(...lons);
+  const mLat = (latMax - latMin) * marginFrac, mLon = (lonMax - lonMin) * marginFrac;
+  latMin -= mLat; latMax += mLat; lonMin -= mLon; lonMax += mLon;
+  const kx = Math.cos((latMin + latMax) / 2 * Math.PI / 180);
+  const spanLon = (lonMax - lonMin) * kx, spanLat = latMax - latMin;
+  const H = Math.min(maxH, Math.round(W * spanLat / spanLon));
+  const sc = Math.min(W / spanLon, H / spanLat);
+  const X = lon => (lon - lonMin) * kx * sc + (W - spanLon * sc) / 2;
+  const Y = lat => H - (lat - latMin) * sc - (H - spanLat * sc) / 2;
+  return { X, Y, W, H };
+}
+
+// Fondo: distritos de Madrid recortados al viewport del mapa
+let clipSeq = 0;
+function drawDistritos(svg, proj) {
+  const { X, Y, W, H } = proj;
+  const clipId = 'map-clip-' + (++clipSeq);
+  const defs = el('defs', {}, svg);
+  const clip = el('clipPath', { id: clipId }, defs);
+  el('rect', { x: 0, y: 0, width: W, height: H }, clip);
+  const g = el('g', { 'clip-path': `url(#${clipId})` }, svg);
+  const dark = isDark();
+  for (const d of D.distritos) {
+    for (const ring of d.rings) {
+      el('path', {
+        d: ring.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1)).join('') + 'Z',
+        fill: css('--page'),
+        stroke: css('--grid'),
+        'stroke-width': 1,
+      }, g);
+    }
+  }
+  // etiqueta en el centroide del anillo mayor, solo si cae dentro del viewport
+  for (const d of D.distritos) {
+    const ring = d.rings.reduce((a, r) => r.length > a.length ? r : a);
+    const cx = ring.reduce((a, p) => a + X(p[0]), 0) / ring.length;
+    const cy = ring.reduce((a, p) => a + Y(p[1]), 0) / ring.length;
+    if (cx < 30 || cx > W - 30 || cy < 14 || cy > H - 8) continue;
+    const t = el('text', { x: cx, y: cy, 'text-anchor': 'middle', class: 'map-label' }, g);
+    t.textContent = d.name;
+  }
+  return g;
+}
+
+const tooltip = document.getElementById('tooltip');
+function showTip(x, y, title, rows) {
+  tooltip.textContent = '';
+  const t = document.createElement('div');
+  t.className = 't-title';
+  t.textContent = title;
+  tooltip.appendChild(t);
+  for (const r of rows) {
+    const div = document.createElement('div');
+    div.className = 't-row';
+    if (r.color) {
+      const k = document.createElement('span');
+      k.className = 'k';
+      k.style.background = r.color;
+      div.appendChild(k);
+    }
+    const v = document.createElement('span');
+    v.className = 'v';
+    v.textContent = r.value;
+    const n = document.createElement('span');
+    n.className = 'n';
+    n.textContent = r.name;
+    div.appendChild(v);
+    div.appendChild(n);
+    tooltip.appendChild(div);
+  }
+  tooltip.style.display = 'block';
+  const w = tooltip.offsetWidth, h = tooltip.offsetHeight;
+  let px = x + 14, py = y - h - 10;
+  if (px + w > innerWidth - 8) px = x - w - 14;
+  if (py < 8) py = y + 14;
+  tooltip.style.left = px + 'px';
+  tooltip.style.top = py + 'px';
+}
+function hideTip() { tooltip.style.display = 'none'; }
+
+function el(tag, attrs, parent) {
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+
+function cardShell(container, title, subtitle) {
+  container.textContent = '';
+  const head = document.createElement('div');
+  head.className = 'card-head';
+  const hwrap = document.createElement('div');
+  const h = document.createElement('h2');
+  h.textContent = title;
+  hwrap.appendChild(h);
+  const sub = document.createElement('p');
+  sub.className = 'subtitle';
+  sub.textContent = subtitle;
+  hwrap.appendChild(sub);
+  head.appendChild(hwrap);
+  const btn = document.createElement('button');
+  btn.className = 'tbl-btn';
+  btn.textContent = 'Datos';
+  btn.setAttribute('aria-pressed', 'false');
+  head.appendChild(btn);
+  container.appendChild(head);
+  const body = document.createElement('div');
+  container.appendChild(body);
+  const tableWrap = document.createElement('div');
+  tableWrap.className = 'data-table';
+  container.appendChild(tableWrap);
+  btn.addEventListener('click', () => {
+    const open = tableWrap.classList.toggle('open');
+    btn.setAttribute('aria-pressed', String(open));
+  });
+  return { body, tableWrap };
+}
+
+function fillTable(wrap, headers, rows) {
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  const trh = document.createElement('tr');
+  for (const htxt of headers) {
+    const th = document.createElement('th');
+    th.textContent = htxt;
+    trh.appendChild(th);
+  }
+  thead.appendChild(trh);
+  table.appendChild(thead);
+  const tbody = document.createElement('tbody');
+  for (const row of rows) {
+    const tr = document.createElement('tr');
+    for (const cell of row) {
+      const td = document.createElement('td');
+      td.textContent = cell;
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  wrap.textContent = '';
+  wrap.appendChild(table);
+}
+
+function legend(items, parent) {
+  const lg = document.createElement('div');
+  lg.className = 'legend';
+  for (const it of items) {
+    const key = document.createElement('span');
+    key.className = 'key';
+    const sw = document.createElement('span');
+    sw.className = it.line ? 'line' : 'swatch';
+    sw.style.background = it.color;
+    key.appendChild(sw);
+    key.appendChild(document.createTextNode(it.name));
+    lg.appendChild(key);
+  }
+  parent.appendChild(lg);
+  return lg;
+}
+
+function niceTicks(max, n = 4) {
+  const raw = max / n;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw);
+  const ticks = [];
+  for (let v = 0; v < max - 1e-9; v += step) ticks.push(v);
+  ticks.push(ticks.length * step); // el último tick siempre cubre el máximo
+  return ticks;
+}
+
+/* ============ KPIs ============ */
+function renderKPIs() {
+  const st = D.stations.filter(s => s.inService);
+  const bikes = D.stations.reduce((a, s) => a + s.bikes, 0);
+  const cap = D.stations.reduce((a, s) => a + s.capacity, 0);
+  const y2025 = D.daily.filter(r => r.date.startsWith('2025'));
+  const total25 = y2025.reduce((a, r) => a + r.trips, 0);
+  const avg25 = Math.round(total25 / y2025.length);
+  const best = D.daily.reduce((a, r) => r.trips > a.trips ? r : a);
+  const lastUsers = D.users[D.users.length - 1];
+
+  const tiles = [
+    { label: 'Estaciones en servicio', value: fmt.format(st.length), sub: `${fmt.format(cap)} anclajes` },
+    { label: 'Bicis disponibles ahora', value: fmt.format(bikes), sub: `${Math.round(bikes / cap * 100)} % de la capacidad` },
+    { label: 'Viajes en 2025', value: (total25 / 1e6).toLocaleString('es-ES', { maximumFractionDigits: 1 }) + ' M', sub: `${fmt.format(avg25)} al día de media` },
+    { label: 'Día récord', value: fmt.format(best.trips), sub: best.date.split('-').reverse().join('/') },
+    { label: 'Usuarios activos', value: fmt.format(lastUsers.users), sub: 'último mes publicado' },
+  ];
+  const wrap = document.getElementById('kpis');
+  for (const t of tiles) {
+    const d = document.createElement('div');
+    d.className = 'tile';
+    for (const [cls, txt] of [['label', t.label], ['value', t.value], ['sub', t.sub]]) {
+      const s = document.createElement('div');
+      s.className = cls;
+      s.textContent = txt;
+      d.appendChild(s);
+    }
+    wrap.appendChild(d);
+  }
+}
+
+/* ============ Mapa de estaciones ============ */
+function renderMap() {
+  const card = document.getElementById('card-map');
+  const { body, tableWrap } = cardShell(card, 'Estaciones ahora mismo',
+    'Cada punto es una estación: tamaño según capacidad, color según % de bicis disponibles en este momento');
+
+  const stations = D.stations.filter(s => s.lat && s.lon);
+  const W = Math.min(body.clientWidth || card.clientWidth - 36, 1120);
+  const proj = makeProjection(stations, W, 620);
+  const { X, Y, H } = proj;
+
+  const svg = el('svg', { width: W, height: H, role: 'img',
+    'aria-label': 'Mapa de estaciones de BiciMAD con disponibilidad actual' }, null);
+  body.appendChild(svg);
+  drawDistritos(svg, proj);
+
+  const colors7 = seqColors();
+  const colorFor = ratio => colors7[Math.min(6, Math.floor(ratio * 7))];
+  const pts = [];
+  for (const s of stations) {
+    const ratio = s.capacity ? s.bikes / s.capacity : 0;
+    const r = Math.max(2.5, Math.sqrt(s.capacity) * 0.62);
+    const x = X(s.lon), y = Y(s.lat);
+    el('circle', {
+      cx: x, cy: y, r,
+      fill: s.inService ? colorFor(ratio) : 'none',
+      stroke: s.inService ? css('--surface-1') : css('--text-muted'),
+      'stroke-width': s.inService ? 1 : 1.2,
+      opacity: s.inService ? 0.92 : 0.6,
+    }, svg);
+    pts.push({ x, y, s });
+  }
+
+  const hoverRing = el('circle', { r: 0, fill: 'none', stroke: css('--text-primary'), 'stroke-width': 1.5, opacity: 0 }, svg);
+  svg.addEventListener('pointermove', e => {
+    const rect = svg.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    let best = null, bd = Infinity;
+    for (const p of pts) {
+      const d = (p.x - mx) ** 2 + (p.y - my) ** 2;
+      if (d < bd) { bd = d; best = p; }
+    }
+    if (best && bd < 40 * 40) {
+      const s = best.s;
+      hoverRing.setAttribute('cx', best.x);
+      hoverRing.setAttribute('cy', best.y);
+      hoverRing.setAttribute('r', Math.max(6, Math.sqrt(s.capacity) * 0.62 + 3));
+      hoverRing.setAttribute('opacity', 1);
+      showTip(e.clientX, e.clientY, s.name, [
+        { value: fmt.format(s.bikes), name: 'bicis disponibles', color: css('--seq-500') },
+        { value: fmt.format(s.docks), name: 'anclajes libres' },
+        { value: fmt.format(s.capacity), name: 'capacidad total' },
+        ...(s.inService ? [] : [{ value: 'fuera de servicio', name: '' }]),
+      ]);
+    } else {
+      hoverRing.setAttribute('opacity', 0);
+      hideTip();
+    }
+  });
+  svg.addEventListener('pointerleave', () => { hoverRing.setAttribute('opacity', 0); hideTip(); });
+
+  const scale = document.createElement('div');
+  scale.className = 'scale-legend';
+  scale.appendChild(document.createTextNode('0 %'));
+  const ramp = document.createElement('span');
+  ramp.className = 'ramp';
+  for (const c of colors7) {
+    const sp = document.createElement('span');
+    sp.style.background = c;
+    ramp.appendChild(sp);
+  }
+  scale.appendChild(ramp);
+  scale.appendChild(document.createTextNode('100 % de bicis disponibles · ○ fuera de servicio'));
+  body.appendChild(scale);
+
+  fillTable(tableWrap, ['Estación', 'Bicis', 'Anclajes libres', 'Capacidad', 'Estado'],
+    [...stations].sort((a, b) => b.bikes - a.bikes).map(s =>
+      [s.name, fmt.format(s.bikes), fmt.format(s.docks), fmt.format(s.capacity),
+       s.inService ? 'En servicio' : 'Fuera de servicio']));
+}
+
+/* ============ Viajes diarios ============ */
+function renderDaily() {
+  const card = document.getElementById('card-daily');
+  const { body, tableWrap } = cardShell(card, 'Viajes por día',
+    `Del ${D.daily[0].date.split('-').reverse().join('/')} al ${D.daily[D.daily.length - 1].date.split('-').reverse().join('/')}`);
+
+  legend([
+    { name: 'Viajes diarios', color: css('--baseline'), line: true },
+    { name: 'Media móvil 7 días', color: css('--series-1'), line: true },
+  ], body);
+
+  const daily = D.daily;
+  const roll = daily.map((r, i) => {
+    const from = Math.max(0, i - 6);
+    const win = daily.slice(from, i + 1);
+    return Math.round(win.reduce((a, x) => a + x.trips, 0) / win.length);
+  });
+
+  const W = Math.min(body.clientWidth || card.clientWidth - 36, 1120);
+  const H = 300, mL = 52, mR = 96, mT = 10, mB = 26;
+  const iw = W - mL - mR, ih = H - mT - mB;
+  const max = Math.max(...daily.map(r => r.trips));
+  const ticks = niceTicks(max);
+  const yMax = ticks[ticks.length - 1];
+  const X = i => mL + i / (daily.length - 1) * iw;
+  const Y = v => mT + ih - v / yMax * ih;
+
+  const svg = el('svg', { width: W, height: H, role: 'img', 'aria-label': 'Serie temporal de viajes diarios en BiciMAD' }, null);
+  body.appendChild(svg);
+
+  for (const t of ticks) {
+    el('line', { x1: mL, x2: W - mR, y1: Y(t), y2: Y(t), stroke: css('--grid'), 'stroke-width': 1 }, svg);
+    const lbl = el('text', { x: mL - 8, y: Y(t) + 4, 'text-anchor': 'end', class: 'axis-label' }, svg);
+    lbl.textContent = fmt.format(t);
+    lbl.style.fontVariantNumeric = 'tabular-nums';
+  }
+  // marcas de eje X en el arranque de cada trimestre
+  daily.forEach((r, i) => {
+    const [y, m, d] = r.date.split('-');
+    if (d === '01' && ['01', '04', '07', '10'].includes(m)) {
+      const lbl = el('text', { x: X(i), y: H - 8, 'text-anchor': 'middle', class: 'axis-label' }, svg);
+      lbl.textContent = (m === '01' ? y : D.meses[+m - 1]);
+      if (m === '01') lbl.style.fontWeight = '600';
+    }
+  });
+  el('line', { x1: mL, x2: W - mR, y1: Y(0), y2: Y(0), stroke: css('--baseline'), 'stroke-width': 1 }, svg);
+
+  const path = pts => pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('');
+  el('path', { d: path(daily.map((r, i) => [X(i), Y(r.trips)])), fill: 'none',
+    stroke: css('--baseline'), 'stroke-width': 1, opacity: 0.85 }, svg);
+  el('path', { d: path(roll.map((v, i) => [X(i), Y(v)])), fill: 'none',
+    stroke: css('--series-1'), 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, svg);
+
+  const li = daily.length - 1;
+  el('circle', { cx: X(li), cy: Y(roll[li]), r: 4, fill: css('--series-1'), stroke: css('--surface-1'), 'stroke-width': 2 }, svg);
+  const endLbl = el('text', { x: X(li) + 8, y: Y(roll[li]) + 4, class: 'direct-label' }, svg);
+  endLbl.textContent = fmt.format(roll[li]) + ' /día';
+
+  const cross = el('line', { y1: mT, y2: mT + ih, stroke: css('--baseline'), 'stroke-width': 1, opacity: 0 }, svg);
+  const dot = el('circle', { r: 4, fill: css('--series-1'), stroke: css('--surface-1'), 'stroke-width': 2, opacity: 0 }, svg);
+  svg.addEventListener('pointermove', e => {
+    const rect = svg.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const i = Math.max(0, Math.min(daily.length - 1, Math.round((mx - mL) / iw * (daily.length - 1))));
+    cross.setAttribute('x1', X(i)); cross.setAttribute('x2', X(i)); cross.setAttribute('opacity', 1);
+    dot.setAttribute('cx', X(i)); dot.setAttribute('cy', Y(roll[i])); dot.setAttribute('opacity', 1);
+    const [y, m, d] = daily[i].date.split('-');
+    showTip(e.clientX, e.clientY, `${d} ${D.meses[+m - 1]} ${y}`, [
+      { value: fmt.format(daily[i].trips), name: 'viajes', color: css('--baseline') },
+      { value: fmt.format(roll[i]), name: 'media 7 días', color: css('--series-1') },
+    ]);
+  });
+  svg.addEventListener('pointerleave', () => { cross.setAttribute('opacity', 0); dot.setAttribute('opacity', 0); hideTip(); });
+
+  fillTable(tableWrap, ['Fecha', 'Viajes', 'Media 7 días'],
+    daily.map((r, i) => [r.date, fmt.format(r.trips), fmt.format(roll[i])]));
+}
+
+/* ============ Comparativa mensual ============ */
+function renderMonthly() {
+  const card = document.getElementById('card-monthly');
+  const { body, tableWrap } = cardShell(card, 'Viajes por mes: 2024 frente a 2025',
+    'Total de viajes mensuales (2024 empieza en febrero)');
+
+  const years = ['2024', '2025'];
+  const colors = [css('--series-1'), css('--series-2')];
+  legend(years.map((y, i) => ({ name: y, color: colors[i] })), body);
+
+  const W = Math.min(body.clientWidth || card.clientWidth - 36, 620);
+  const H = 260, mL = 46, mR = 8, mT = 12, mB = 24;
+  const iw = W - mL - mR, ih = H - mT - mB;
+  const vals = years.flatMap(y => (D.monthly[y] || []).filter(v => v != null));
+  const ticks = niceTicks(Math.max(...vals));
+  const yMax = ticks[ticks.length - 1];
+  const Y = v => mT + ih - v / yMax * ih;
+
+  const svg = el('svg', { width: W, height: H, role: 'img', 'aria-label': 'Viajes mensuales de BiciMAD, 2024 frente a 2025' }, null);
+  body.appendChild(svg);
+
+  for (const t of ticks) {
+    el('line', { x1: mL, x2: W - mR, y1: Y(t), y2: Y(t), stroke: css('--grid'), 'stroke-width': 1 }, svg);
+    const lbl = el('text', { x: mL - 6, y: Y(t) + 4, 'text-anchor': 'end', class: 'axis-label' }, svg);
+    lbl.textContent = t >= 1e6 ? (t / 1e6).toLocaleString('es-ES') + ' M' : fmtK(t);
+    lbl.style.fontVariantNumeric = 'tabular-nums';
+  }
+
+  const slot = iw / 12;
+  const barW = Math.min(14, (slot - 8) / 2 - 1);
+  const bars = [];
+  for (let m = 0; m < 12; m++) {
+    const cx = mL + slot * m + slot / 2;
+    const lbl = el('text', { x: cx, y: H - 6, 'text-anchor': 'middle', class: 'axis-label' }, svg);
+    lbl.textContent = D.meses[m];
+    years.forEach((y, yi) => {
+      const v = (D.monthly[y] || [])[m];
+      if (v == null) return;
+      const x = cx - barW - 1 + yi * (barW + 2); // hueco de 2px entre barras contiguas
+      const rect = el('path', {
+        d: roundedTopBar(x, Y(v), barW, Y(0) - Y(v), 4),
+        fill: colors[yi],
+      }, svg);
+      bars.push({ el: rect, x, w: barW, m, y, v, color: colors[yi] });
+    });
+  }
+  el('line', { x1: mL, x2: W - mR, y1: Y(0), y2: Y(0), stroke: css('--baseline'), 'stroke-width': 1 }, svg);
+
+  svg.addEventListener('pointermove', e => {
+    const rect = svg.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const m = Math.max(0, Math.min(11, Math.floor((mx - mL) / slot)));
+    bars.forEach(b => b.el.setAttribute('opacity', b.m === m ? 1 : 0.85));
+    const rows = years.map((y, yi) => {
+      const v = (D.monthly[y] || [])[m];
+      return v == null ? null : { value: fmt.format(v), name: y, color: colors[yi] };
+    }).filter(Boolean);
+    if (rows.length) showTip(e.clientX, e.clientY, D.meses[m] + '.', rows); else hideTip();
+  });
+  svg.addEventListener('pointerleave', () => { bars.forEach(b => b.el.setAttribute('opacity', 1)); hideTip(); });
+
+  fillTable(tableWrap, ['Mes', '2024', '2025'],
+    D.meses.map((mes, m) => [mes,
+      D.monthly['2024'] && D.monthly['2024'][m] != null ? fmt.format(D.monthly['2024'][m]) : '—',
+      D.monthly['2025'] && D.monthly['2025'][m] != null ? fmt.format(D.monthly['2025'][m]) : '—']));
+}
+
+function roundedTopBar(x, y, w, h, r) {
+  if (h <= 0) return '';
+  r = Math.min(r, w / 2, h);
+  return `M${x} ${y + h} L${x} ${y + r} Q${x} ${y} ${x + r} ${y} L${x + w - r} ${y} Q${x + w} ${y} ${x + w} ${y + r} L${x + w} ${y + h} Z`;
+}
+
+/* ============ Día de la semana ============ */
+function renderWeekday() {
+  const card = document.getElementById('card-weekday');
+  const { body, tableWrap } = cardShell(card, 'Media de viajes por día de la semana',
+    'Promedio sobre todo el periodo (feb 2024 – dic 2025)');
+
+  const W = Math.min(body.clientWidth || card.clientWidth - 36, 620);
+  const H = 260, mL = 46, mR = 8, mT = 22, mB = 24;
+  const iw = W - mL - mR, ih = H - mT - mB;
+  const vals = D.weekdayAvg;
+  const ticks = niceTicks(Math.max(...vals));
+  const yMax = ticks[ticks.length - 1];
+  const Y = v => mT + ih - v / yMax * ih;
+
+  const svg = el('svg', { width: W, height: H, role: 'img', 'aria-label': 'Media de viajes por día de la semana' }, null);
+  body.appendChild(svg);
+
+  for (const t of ticks) {
+    el('line', { x1: mL, x2: W - mR, y1: Y(t), y2: Y(t), stroke: css('--grid'), 'stroke-width': 1 }, svg);
+    const lbl = el('text', { x: mL - 6, y: Y(t) + 4, 'text-anchor': 'end', class: 'axis-label' }, svg);
+    lbl.textContent = fmt.format(t);
+    lbl.style.fontVariantNumeric = 'tabular-nums';
+  }
+
+  const slot = iw / 7;
+  const barW = Math.min(24, slot - 14);
+  const maxI = vals.indexOf(Math.max(...vals));
+  const minI = vals.indexOf(Math.min(...vals));
+  const bars = [];
+  vals.forEach((v, i) => {
+    const x = mL + slot * i + (slot - barW) / 2;
+    const rect = el('path', { d: roundedTopBar(x, Y(v), barW, Y(0) - Y(v), 4), fill: css('--series-1') }, svg);
+    bars.push({ el: rect, i });
+    const lbl = el('text', { x: mL + slot * i + slot / 2, y: H - 6, 'text-anchor': 'middle', class: 'axis-label' }, svg);
+    lbl.textContent = DIAS[i];
+    if (i === maxI || i === minI) {
+      const dl = el('text', { x: mL + slot * i + slot / 2, y: Y(v) - 6, 'text-anchor': 'middle', class: 'direct-label' }, svg);
+      dl.textContent = fmt.format(v);
+    }
+  });
+  el('line', { x1: mL, x2: W - mR, y1: Y(0), y2: Y(0), stroke: css('--baseline'), 'stroke-width': 1 }, svg);
+
+  svg.addEventListener('pointermove', e => {
+    const rect = svg.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const i = Math.max(0, Math.min(6, Math.floor((mx - mL) / slot)));
+    bars.forEach(b => b.el.setAttribute('opacity', b.i === i ? 1 : 0.85));
+    showTip(e.clientX, e.clientY, ['lunes','martes','miércoles','jueves','viernes','sábado','domingo'][i],
+      [{ value: fmt.format(vals[i]), name: 'viajes de media', color: css('--series-1') }]);
+  });
+  svg.addEventListener('pointerleave', () => { bars.forEach(b => b.el.setAttribute('opacity', 1)); hideTip(); });
+
+  fillTable(tableWrap, ['Día', 'Viajes de media'],
+    vals.map((v, i) => [['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'][i], fmt.format(v)]));
+}
+
+/* ============ Heatmap mes × día ============ */
+function renderHeatmap() {
+  const card = document.getElementById('card-heatmap');
+  const { body, tableWrap } = cardShell(card, 'Ritmo del servicio',
+    'Media de viajes por mes y día de la semana (feb 2024 – dic 2025)');
+
+  const W = Math.min(body.clientWidth || card.clientWidth - 36, 620);
+  const mL = 40, mR = 8, mT = 20, mB = 6;
+  const cw = (W - mL - mR) / 12;
+  const ch = Math.min(30, cw);
+  const H = mT + ch * 7 + mB;
+  const grid = D.heatmap;
+  const flat = grid.flat().filter(v => v != null);
+  const lo = Math.min(...flat), hi = Math.max(...flat);
+  const colors7 = seqColors();
+  const colorFor = v => colors7[Math.min(6, Math.floor((v - lo) / (hi - lo + 1e-9) * 7))];
+
+  const svg = el('svg', { width: W, height: H, role: 'img', 'aria-label': 'Mapa de calor de viajes medios por mes y día de la semana' }, null);
+  body.appendChild(svg);
+
+  for (let m = 0; m < 12; m++) {
+    const lbl = el('text', { x: mL + cw * m + cw / 2, y: 13, 'text-anchor': 'middle', class: 'axis-label' }, svg);
+    lbl.textContent = D.meses[m];
+  }
+  const cells = [];
+  for (let wd = 0; wd < 7; wd++) {
+    const lbl = el('text', { x: mL - 6, y: mT + ch * wd + ch / 2 + 4, 'text-anchor': 'end', class: 'axis-label' }, svg);
+    lbl.textContent = DIAS[wd];
+    for (let m = 0; m < 12; m++) {
+      const v = grid[m][wd];
+      if (v == null) continue;
+      const rect = el('rect', {
+        x: mL + cw * m + 1, y: mT + ch * wd + 1,
+        width: cw - 2, height: ch - 2, rx: 3,
+        fill: colorFor(v),
+      }, svg);
+      cells.push({ el: rect, m, wd, v });
+    }
+  }
+
+  svg.addEventListener('pointermove', e => {
+    const rect = svg.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const m = Math.floor((mx - mL) / cw), wd = Math.floor((my - mT) / ch);
+    const cell = cells.find(c => c.m === m && c.wd === wd);
+    cells.forEach(c => c.el.setAttribute('opacity', cell && c === cell ? 1 : cell ? 0.8 : 1));
+    if (cell) {
+      showTip(e.clientX, e.clientY, `${DIAS[wd]} de ${D.meses[m]}.`,
+        [{ value: fmt.format(cell.v), name: 'viajes de media', color: colorFor(cell.v) }]);
+    } else hideTip();
+  });
+  svg.addEventListener('pointerleave', () => { cells.forEach(c => c.el.setAttribute('opacity', 1)); hideTip(); });
+
+  const scale = document.createElement('div');
+  scale.className = 'scale-legend';
+  scale.appendChild(document.createTextNode(fmtK(lo)));
+  const ramp = document.createElement('span');
+  ramp.className = 'ramp';
+  for (const c of colors7) {
+    const sp = document.createElement('span');
+    sp.style.background = c;
+    ramp.appendChild(sp);
+  }
+  scale.appendChild(ramp);
+  scale.appendChild(document.createTextNode(fmtK(hi) + ' viajes/día'));
+  body.appendChild(scale);
+
+  fillTable(tableWrap, ['Mes', ...DIAS],
+    D.meses.map((mes, m) => [mes, ...grid[m].map(v => v == null ? '—' : fmt.format(v))]));
+}
+
+/* ============ Usuarios activos ============ */
+function renderUsers() {
+  const card = document.getElementById('card-users');
+  const { body, tableWrap } = cardShell(card, 'Usuarios activos por mes',
+    'Usuarios con al menos un viaje en el mes (serie de la EMT)');
+
+  const users = D.users;
+  const W = Math.min(body.clientWidth || card.clientWidth - 36, 620);
+  const H = 260, mL = 52, mR = 76, mT = 14, mB = 24;
+  const iw = W - mL - mR, ih = H - mT - mB;
+  const ticks = niceTicks(Math.max(...users.map(u => u.users)));
+  const yMax = ticks[ticks.length - 1];
+  const X = i => mL + i / (users.length - 1) * iw;
+  const Y = v => mT + ih - v / yMax * ih;
+
+  const svg = el('svg', { width: W, height: H, role: 'img', 'aria-label': 'Usuarios activos mensuales de BiciMAD' }, null);
+  body.appendChild(svg);
+
+  for (const t of ticks) {
+    el('line', { x1: mL, x2: W - mR, y1: Y(t), y2: Y(t), stroke: css('--grid'), 'stroke-width': 1 }, svg);
+    const lbl = el('text', { x: mL - 8, y: Y(t) + 4, 'text-anchor': 'end', class: 'axis-label' }, svg);
+    lbl.textContent = fmtK(t);
+    lbl.style.fontVariantNumeric = 'tabular-nums';
+  }
+  users.forEach((u, i) => {
+    const [y, m] = u.date.split('-');
+    if (m === '01' || i === 0) {
+      const lbl = el('text', { x: X(i), y: H - 6, 'text-anchor': 'middle', class: 'axis-label' }, svg);
+      lbl.textContent = m === '01' ? y : D.meses[+m - 1] + ' ' + y.slice(2);
+      if (m === '01') lbl.style.fontWeight = '600';
+    }
+  });
+
+  const pts = users.map((u, i) => [X(i), Y(u.users)]);
+  const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('');
+  el('path', { d: line + `L${X(users.length - 1)} ${Y(0)} L${X(0)} ${Y(0)} Z`, fill: css('--series-1'), opacity: 0.1 }, svg);
+  el('path', { d: line, fill: 'none', stroke: css('--series-1'), 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, svg);
+  el('line', { x1: mL, x2: W - mR, y1: Y(0), y2: Y(0), stroke: css('--baseline'), 'stroke-width': 1 }, svg);
+
+  const li = users.length - 1;
+  el('circle', { cx: X(li), cy: Y(users[li].users), r: 4, fill: css('--series-1'), stroke: css('--surface-1'), 'stroke-width': 2 }, svg);
+  const endLbl = el('text', { x: X(li) + 8, y: Y(users[li].users) + 4, class: 'direct-label' }, svg);
+  endLbl.textContent = fmtK(users[li].users);
+
+  const cross = el('line', { y1: mT, y2: mT + ih, stroke: css('--baseline'), 'stroke-width': 1, opacity: 0 }, svg);
+  const dot = el('circle', { r: 4, fill: css('--series-1'), stroke: css('--surface-1'), 'stroke-width': 2, opacity: 0 }, svg);
+  svg.addEventListener('pointermove', e => {
+    const rect = svg.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const i = Math.max(0, Math.min(users.length - 1, Math.round((mx - mL) / iw * (users.length - 1))));
+    cross.setAttribute('x1', X(i)); cross.setAttribute('x2', X(i)); cross.setAttribute('opacity', 1);
+    dot.setAttribute('cx', X(i)); dot.setAttribute('cy', Y(users[i].users)); dot.setAttribute('opacity', 1);
+    const [y, m] = users[i].date.split('-');
+    showTip(e.clientX, e.clientY, `${D.meses[+m - 1]}. ${y}`,
+      [{ value: fmt.format(users[i].users), name: 'usuarios activos', color: css('--series-1') }]);
+  });
+  svg.addEventListener('pointerleave', () => { cross.setAttribute('opacity', 0); dot.setAttribute('opacity', 0); hideTip(); });
+
+  fillTable(tableWrap, ['Mes', 'Usuarios activos'],
+    users.map(u => {
+      const [y, m] = u.date.split('-');
+      return [`${D.meses[+m - 1]} ${y}`, fmt.format(u.users)];
+    }));
+}
+
+/* ============ Movimiento por horas (slider) ============ */
+const flowState = { hour: 8, mode: 'wd', playing: false, timer: null };
+
+function renderFlow() {
+  const card = document.getElementById('card-flow');
+  if (!D.flow) { card.style.display = 'none'; return; }
+  const F = D.flow;
+  const { body, tableWrap } = cardShell(card, 'Cómo se mueve la ciudad',
+    `Nivel de llenado estimado de cada estación a lo largo del día (flujo neto acumulado, sin contar rebalanceos) · ` +
+    `viajes de ${F.year}, el último año con microdatos publicados (${(F.totalTrips / 1e6).toLocaleString('es-ES', { maximumFractionDigits: 1 })} M de viajes)`);
+
+  if (flowState.timer) { clearInterval(flowState.timer); flowState.timer = null; }
+
+  // controles: tipo de día + play + slider + hora
+  const controls = document.createElement('div');
+  controls.className = 'flow-controls';
+  const seg = document.createElement('div');
+  seg.className = 'seg';
+  const segBtns = [['wd', 'Laborable'], ['we', 'Fin de semana']].map(([mode, label]) => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.setAttribute('aria-pressed', String(flowState.mode === mode));
+    b.addEventListener('click', () => {
+      flowState.mode = mode;
+      segBtns.forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      update();
+    });
+    seg.appendChild(b);
+    return b;
+  });
+  controls.appendChild(seg);
+
+  const play = document.createElement('button');
+  play.className = 'play-btn';
+  play.textContent = flowState.playing ? '❚❚' : '▶';
+  play.setAttribute('aria-label', 'Reproducir animación');
+  controls.appendChild(play);
+
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  slider.className = 'hour-slider';
+  slider.min = 0; slider.max = 23; slider.step = 1;
+  slider.value = flowState.hour;
+  slider.setAttribute('aria-label', 'Hora del día');
+  controls.appendChild(slider);
+
+  const hourLabel = document.createElement('span');
+  hourLabel.className = 'hour-label';
+  controls.appendChild(hourLabel);
+  body.appendChild(controls);
+
+  // mapa
+  const stations = F.stations;
+  const W = Math.min(body.clientWidth || card.clientWidth - 36, 1120);
+  const proj = makeProjection(stations, W, 620);
+  const { X, Y, H } = proj;
+  const svg = el('svg', { width: W, height: H, role: 'img',
+    'aria-label': 'Mapa animado de salidas y llegadas por estación y hora' }, null);
+  body.appendChild(svg);
+  drawDistritos(svg, proj);
+
+  // Nivel de llenado estimado: flujo neto acumulado desde medianoche,
+  // normalizado al rango diario de cada estación (0 = su mínimo, 1 = su máximo).
+  function fillSeries(s, mode) {
+    const out = s[mode + 'Out'], inn = s[mode + 'In'];
+    let acc = 0;
+    const cum = out.map((v, h) => (acc += inn[h] - v));
+    const mn = Math.min(0, ...cum), mx = Math.max(0, ...cum);
+    return cum.map(v => mx > mn ? (v - mn) / (mx - mn) : 0.5);
+  }
+  const dayTotal = (s, mode) =>
+    s[mode + 'Out'].reduce((a, v) => a + v, 0) + s[mode + 'In'].reduce((a, v) => a + v, 0);
+  for (const s of stations) {
+    s._fill = { wd: fillSeries(s, 'wd'), we: fillSeries(s, 'we') };
+    s._total = { wd: dayTotal(s, 'wd'), we: dayTotal(s, 'we') };
+  }
+  const maxTotal = Math.max(...stations.map(s => Math.max(s._total.wd, s._total.we)));
+  const rFor = total => 2.5 + Math.sqrt(total / maxTotal) * 13;
+
+  const pts = stations.map(s => {
+    const x = X(s.lon), y = Y(s.lat);
+    const c = el('circle', {
+      cx: x, cy: y, r: 1.5,
+      stroke: css('--surface-1'), 'stroke-width': 1, opacity: 0.92,
+    }, svg);
+    return { x, y, s, c };
+  });
+  const hoverRing = el('circle', { r: 0, fill: 'none', stroke: css('--text-primary'), 'stroke-width': 1.5, opacity: 0 }, svg);
+
+  const colors = seqColors();
+  const colorFor = f => colors[Math.max(0, Math.min(6, Math.floor(f * 7)))];
+  function update() {
+    const h = flowState.hour, m = flowState.mode;
+    hourLabel.textContent = `${String(h).padStart(2, '0')}:00–${String((h + 1) % 24).padStart(2, '0')}:00`;
+    slider.value = h;
+    for (const p of pts) {
+      p.c.setAttribute('r', rFor(p.s._total[m]).toFixed(1));
+      p.c.setAttribute('fill', colorFor(p.s._fill[m][h]));
+    }
+    if (tableWrap.classList.contains('open')) fillFlowTable();
+  }
+  function fillFlowTable() {
+    const h = flowState.hour, m = flowState.mode;
+    fillTable(tableWrap, [`Estación (${hourLabel.textContent})`, 'Llenado est.', 'Salidas/h', 'Llegadas/h'],
+      [...stations]
+        .map(s => ({ s, f: s._fill[m][h], out: s[m + 'Out'][h], inn: s[m + 'In'][h] }))
+        .sort((a, b) => (b.out + b.inn) - (a.out + a.inn))
+        .map(({ s, f, out, inn }) => [s.name, Math.round(f * 100) + ' %',
+          out.toLocaleString('es-ES'), inn.toLocaleString('es-ES')]));
+  }
+  card.querySelector('.tbl-btn').addEventListener('click', fillFlowTable);
+
+  function setPlaying(on) {
+    flowState.playing = on;
+    play.textContent = on ? '❚❚' : '▶';
+    if (flowState.timer) { clearInterval(flowState.timer); flowState.timer = null; }
+    if (on) flowState.timer = setInterval(() => {
+      flowState.hour = (flowState.hour + 1) % 24;
+      update();
+    }, 650);
+  }
+  play.addEventListener('click', () => setPlaying(!flowState.playing));
+  slider.addEventListener('input', () => {
+    flowState.hour = +slider.value;
+    if (flowState.playing) setPlaying(false);
+    update();
+  });
+
+  svg.addEventListener('pointermove', e => {
+    const rect = svg.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    let best = null, bd = Infinity;
+    for (const p of pts) {
+      const d = (p.x - mx) ** 2 + (p.y - my) ** 2;
+      if (d < bd) { bd = d; best = p; }
+    }
+    if (best && bd < 40 * 40) {
+      const { s } = best;
+      const h = flowState.hour, m = flowState.mode;
+      const out = s[m + 'Out'][h], inn = s[m + 'In'][h];
+      const f = s._fill[m][h];
+      hoverRing.setAttribute('cx', best.x);
+      hoverRing.setAttribute('cy', best.y);
+      hoverRing.setAttribute('r', rFor(s._total[m]) + 3);
+      hoverRing.setAttribute('opacity', 1);
+      showTip(e.clientX, e.clientY, s.name, [
+        { value: Math.round(f * 100) + ' %', name: 'llenado estimado', color: colorFor(f) },
+        { value: out.toLocaleString('es-ES'), name: 'salidas/hora' },
+        { value: inn.toLocaleString('es-ES'), name: 'llegadas/hora' },
+      ]);
+    } else {
+      hoverRing.setAttribute('opacity', 0);
+      hideTip();
+    }
+  });
+  svg.addEventListener('pointerleave', () => { hoverRing.setAttribute('opacity', 0); hideTip(); });
+
+  const scale = document.createElement('div');
+  scale.className = 'scale-legend';
+  scale.appendChild(document.createTextNode('vacía'));
+  const ramp = document.createElement('span');
+  ramp.className = 'ramp';
+  for (const c of colors) {
+    const sp = document.createElement('span');
+    sp.style.background = c;
+    ramp.appendChild(sp);
+  }
+  scale.appendChild(ramp);
+  scale.appendChild(document.createTextNode('llena (respecto a su propio rango del día) · tamaño = viajes al día'));
+  body.appendChild(scale);
+
+  update();
+  if (flowState.playing) setPlaying(true);
+}
+
+/* ============ render ============ */
+function renderAll() {
+  document.getElementById('meta').textContent =
+    `Disponibilidad en vivo del ${D.liveTimestamp} · histórico hasta ${D.daily[D.daily.length - 1].date.split('-').reverse().join('/')}`;
+  renderMap();
+  renderFlow();
+  renderDaily();
+  renderMonthly();
+  renderWeekday();
+  renderHeatmap();
+  renderUsers();
+}
+renderKPIs();
+renderAll();
+let rT;
+window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(renderAll, 150); });
+const mq = window.matchMedia('(prefers-color-scheme: dark)');
+if (mq.addEventListener) mq.addEventListener('change', renderAll);
+</script>
+</body>
+</html>
