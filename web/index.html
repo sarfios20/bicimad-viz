@@ -10,7 +10,7 @@
   --page: #f9f9f7;
   --text-primary: #0b0b0b;
   --text-secondary: #52514e;
-  --text-muted: #898781;
+  --text-muted: #706e68;
   --grid: #e1e0d9;
   --baseline: #c3c2b7;
   --border: rgba(11,11,11,0.10);
@@ -48,12 +48,13 @@ header p { margin: 0; color: var(--text-secondary); }
 header .meta { color: var(--text-muted); font-size: 12px; margin-top: 6px; }
 
 .kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   margin: 24px 0;
 }
 .tile {
+  flex: 1 1 160px;
   background: var(--surface-1);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -163,7 +164,7 @@ input[type="range"].hour-slider {
   accent-color: var(--series-1);
   height: 24px;
 }
-.map-label { fill: var(--text-muted); font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.8; }
+.map-label { fill: var(--text-muted); font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.8; }
 #card-flow svg circle { transition: fill 0.55s linear, r 0.55s ease; }
 
 footer { margin-top: 28px; color: var(--text-muted); font-size: 12px; }
@@ -203,7 +204,11 @@ footer a { color: var(--text-secondary); }
 <script>
 'use strict';
 const D = window.BICIMAD;
+// Anchos de gráfico por debajo de los cuales se reducen las etiquetas del eje.
+const DAILY_LABEL_WIDTH = 600, MONTH_LABEL_WIDTH = 420;
 const fmt = new Intl.NumberFormat('es-ES');
+// Fecha de la foto de disponibilidad (GBFS), en el mismo formato dd/mm/aaaa que el resto de fechas.
+const liveDate = D.liveTimestamp.split(' ')[0].split('-').reverse().join('/');
 const fmtK = n => n >= 10000 ? (n / 1000).toLocaleString('es-ES', { maximumFractionDigits: 0 }) + ' mil' : fmt.format(n);
 const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 const SEQ = ['--seq-100','--seq-200','--seq-300','--seq-400','--seq-500','--seq-600','--seq-700'];
@@ -404,7 +409,7 @@ function renderKPIs() {
 
   const tiles = [
     { label: 'Estaciones en servicio', value: fmt.format(st.length), sub: `${fmt.format(cap)} anclajes` },
-    { label: 'Bicis disponibles ahora', value: fmt.format(bikes), sub: `${Math.round(bikes / cap * 100)} % de la capacidad` },
+    { label: 'Bicis disponibles', value: fmt.format(bikes), sub: `${Math.round(bikes / cap * 100)} % de la capacidad` },
     { label: 'Viajes en 2025', value: (total25 / 1e6).toLocaleString('es-ES', { maximumFractionDigits: 1 }) + ' M', sub: `${fmt.format(avg25)} al día de media` },
     { label: 'Día récord', value: fmt.format(best.trips), sub: best.date.split('-').reverse().join('/') },
     { label: 'Usuarios activos', value: fmt.format(lastUsers.users), sub: 'último mes publicado' },
@@ -426,8 +431,8 @@ function renderKPIs() {
 /* ============ Mapa de estaciones ============ */
 function renderMap() {
   const card = document.getElementById('card-map');
-  const { body, tableWrap } = cardShell(card, 'Estaciones ahora mismo',
-    'Cada punto es una estación: tamaño según capacidad, color según % de bicis disponibles en este momento');
+  const { body, tableWrap } = cardShell(card, `Estaciones el ${liveDate}`,
+    'Cada punto es una estación: tamaño según capacidad, color según % de bicis disponibles');
 
   const stations = D.stations.filter(s => s.lat && s.lon);
   const W = Math.min(body.clientWidth || card.clientWidth - 36, 1120);
@@ -435,7 +440,7 @@ function renderMap() {
   const { X, Y, H } = proj;
 
   const svg = el('svg', { width: W, height: H, role: 'img',
-    'aria-label': 'Mapa de estaciones de BiciMAD con disponibilidad actual' }, null);
+    'aria-label': `Mapa de estaciones de BiciMAD con disponibilidad del ${liveDate}` }, null);
   body.appendChild(svg);
   drawDistritos(svg, proj);
 
@@ -543,7 +548,7 @@ function renderDaily() {
   // marcas de eje X en el arranque de cada trimestre
   daily.forEach((r, i) => {
     const [y, m, d] = r.date.split('-');
-    if (d === '01' && ['01', '04', '07', '10'].includes(m)) {
+    if (d === '01' && (W < DAILY_LABEL_WIDTH ? m === '01' : ['01', '04', '07', '10'].includes(m))) {
       const lbl = el('text', { x: X(i), y: H - 8, 'text-anchor': 'middle', class: 'axis-label' }, svg);
       lbl.textContent = (m === '01' ? y : D.meses[+m - 1]);
       if (m === '01') lbl.style.fontWeight = '600';
@@ -615,8 +620,10 @@ function renderMonthly() {
   const bars = [];
   for (let m = 0; m < 12; m++) {
     const cx = mL + slot * m + slot / 2;
-    const lbl = el('text', { x: cx, y: H - 6, 'text-anchor': 'middle', class: 'axis-label' }, svg);
-    lbl.textContent = D.meses[m];
+    if (W >= MONTH_LABEL_WIDTH || m % 2 === 0) {
+      const lbl = el('text', { x: cx, y: H - 6, 'text-anchor': 'middle', class: 'axis-label' }, svg);
+      lbl.textContent = D.meses[m];
+    }
     years.forEach((y, yi) => {
       const v = (D.monthly[y] || [])[m];
       if (v == null) return;
@@ -732,6 +739,7 @@ function renderHeatmap() {
   body.appendChild(svg);
 
   for (let m = 0; m < 12; m++) {
+    if (W < MONTH_LABEL_WIDTH && m % 2 !== 0) continue;
     const lbl = el('text', { x: mL + cw * m + cw / 2, y: 13, 'text-anchor': 'middle', class: 'axis-label' }, svg);
     lbl.textContent = D.meses[m];
   }
@@ -1025,7 +1033,7 @@ function renderFlow() {
 /* ============ render ============ */
 function renderAll() {
   document.getElementById('meta').textContent =
-    `Disponibilidad en vivo del ${D.liveTimestamp} · histórico hasta ${D.daily[D.daily.length - 1].date.split('-').reverse().join('/')}`;
+    `Disponibilidad del ${liveDate} · histórico hasta ${D.daily[D.daily.length - 1].date.split('-').reverse().join('/')}`;
   renderMap();
   renderFlow();
   renderDaily();
